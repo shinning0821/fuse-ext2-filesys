@@ -200,33 +200,8 @@ struct newfs_inode* newfs_alloc_inode(struct newfs_dentry * dentry) {
     inode->dir_cnt = 0;
     inode->dentrys = NULL;
     
-    if(inode->ino != 0 ){   //根目录就不用分配了
-        /*在data位图上寻找能容纳目录项的空闲data节点*/
-        for (byte_cursor = 0; byte_cursor < NEWFS_BLKS_SZ(newfs_super.map_data_blks); 
-            byte_cursor++)
-        {
-            for (bit_cursor = 0; bit_cursor < UINT8_BITS; bit_cursor++) {
-                if((newfs_super.map_data[byte_cursor] & (0x1 << bit_cursor)) == 0) {    
-                                                        /* 当前dno_cursor位置空闲 */
-                    newfs_super.map_data[byte_cursor] |= (0x1 << bit_cursor);
-                    inode->dno[data_cnt] = dno_cursor;  /*为当前目录项分配data节点*/
-                    data_cnt ++;
-                    if(data_cnt == NEWFS_DATA_PER_FILE){  /*由于一个目录项对应多个data块，因此空闲data节点足够时，停止寻找*/
-                        is_find_free_enough = TRUE;
-                        break;
-                    }           
-                }
-                dno_cursor++;
-            }
-            if (is_find_free_enough) {
-                break;
-            }
-        }
-        if (!is_find_free_enough || dno_cursor == newfs_super.max_data)
-            return -NEWFS_ERROR_NOSPACE;
-    }
+    // /*分配inode时不在data位图上分配节点，刷回磁盘的时候按需分配*/
     
-
     /*对于FILE类型要给其分配空间，不必分配连续的空间，分配一个指针即可，同时分配*/
     if (NEWFS_IS_REG(inode)) {
         for(int cnt=0;cnt<NEWFS_DATA_PER_FILE;cnt++){
@@ -289,6 +264,30 @@ int newfs_sync_inode(struct newfs_inode * inode) {
 
                 dentry_cursor = dentry_cursor->brother;
                 offset += sizeof(struct newfs_dentry_d);
+                
+                // 每次写入一个目录，为其在数据位图上分配一个节点
+                int dno_cursor = 0;
+                boolean is_find_free_enough = FALSE;
+                for (int byte_cursor = 0; byte_cursor < NEWFS_BLKS_SZ(newfs_super.map_data_blks); 
+                    byte_cursor++)
+                {
+                    for (int bit_cursor = 0; bit_cursor < UINT8_BITS; bit_cursor++) {
+                        if((newfs_super.map_data[byte_cursor] & (0x1 << bit_cursor)) == 0) {    
+                                                                /* 当前dno_cursor位置空闲 */
+                            newfs_super.map_data[byte_cursor] |= (0x1 << bit_cursor);
+                            inode->dno[dno_cnt] = dno_cursor;  /*为当前目录项分配data节点*/
+                            is_find_free_enough = TRUE;
+                            break;
+                        }
+                        dno_cursor++;
+                    }
+                    if (is_find_free_enough) {
+                        break;
+                    }
+                }
+                if (!is_find_free_enough || dno_cursor == newfs_super.max_data)
+                    return -NEWFS_ERROR_NOSPACE;
+
                 if((offset+sizeof(struct newfs_dentry_d))>NEWFS_DATA_OFS(inode->dno[dno_cnt]+1)){             /*如果一个数据块不够写，写到下一个数据块*/
                     break;
                 }
@@ -296,6 +295,7 @@ int newfs_sync_inode(struct newfs_inode * inode) {
             dno_cnt++;
         }
     }
+
     else if (NEWFS_IS_REG(inode)) {
         /*inode对应文件格式的写入*/
         for(dno_cnt=0;dno_cnt<NEWFS_DATA_PER_FILE;dno_cnt++){
@@ -304,6 +304,29 @@ int newfs_sync_inode(struct newfs_inode * inode) {
                 NEWFS_DBG("[%s] io error\n", __func__);
                 return -NEWFS_ERROR_IO;
             }
+
+             // 每次写入一个文件，为其在数据位图上分配一个节点
+            int dno_cursor = 0;
+            boolean is_find_free_enough = FALSE;
+            for (int byte_cursor = 0; byte_cursor < NEWFS_BLKS_SZ(newfs_super.map_data_blks); 
+                byte_cursor++)
+            {
+                for (int bit_cursor = 0; bit_cursor < UINT8_BITS; bit_cursor++) {
+                    if((newfs_super.map_data[byte_cursor] & (0x1 << bit_cursor)) == 0) {    
+                                                            /* 当前dno_cursor位置空闲 */
+                        newfs_super.map_data[byte_cursor] |= (0x1 << bit_cursor);
+                        inode->dno[dno_cnt] = dno_cursor;  /*为当前目录项分配data节点*/
+                        is_find_free_enough = TRUE;
+                        break;
+                    }
+                    dno_cursor++;
+                }
+                if (is_find_free_enough) {
+                    break;
+                }
+            }
+            if (!is_find_free_enough || dno_cursor == newfs_super.max_data)
+                return -NEWFS_ERROR_NOSPACE;
         }
     }
     return NEWFS_ERROR_NONE;

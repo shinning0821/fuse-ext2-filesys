@@ -149,15 +149,15 @@ static inline struct newfs_dentry* new_dentry(char * fname, NEWFS_FILE_TYPE ftyp
 *******************************************************************************/
 struct newfs_super_d {
     /* TODO: Define yourself */
-    uint32_t           magic_num;
+    uint32_t           magic_num;               /*幻数*/
     int                sz_usage;
 
     uint32_t           max_ino;                 /*inode的数目，即最多支持的文件数*/
     int                map_inode_blks;          /*inode位图所占的数据块*/
     int                map_inode_offset;        /*inode位图的偏移*/
 
-    int                map_data_blks;          /*数据位图所占的数据块*/
-    int                map_data_offset;        /*数据位图的偏移*/
+    int                map_data_blks;           /*数据位图所占的数据块*/
+    int                map_data_offset;         /*数据位图的偏移*/
 
     int                inode_offset;            /*inode块的偏移*/
     int                data_offset;             /*数据块的偏移*/
