@@ -288,7 +288,7 @@ int newfs_sync_inode(struct newfs_inode * inode) {
                 if (!is_find_free_enough || dno_cursor == newfs_super.max_data)
                     return -NEWFS_ERROR_NOSPACE;
 
-                if((offset+sizeof(struct newfs_dentry_d))>NEWFS_DATA_OFS(inode->dno[dno_cnt]+1)){             /*如果一个数据块不够写，写到下一个数据块*/
+                if((offset+sizeof(struct newfs_dentry_d))>NEWFS_DATA_OFS(inode->dno[dno_cnt]+1)){       /*如果一个数据块不够写，写到下一个数据块*/
                     break;
                 }
             }
@@ -305,7 +305,7 @@ int newfs_sync_inode(struct newfs_inode * inode) {
                 return -NEWFS_ERROR_IO;
             }
 
-             // 每次写入一个文件，为其在数据位图上分配一个节点
+             // 每次写入一个数据块，为其在数据位图上分配一个节点
             int dno_cursor = 0;
             boolean is_find_free_enough = FALSE;
             for (int byte_cursor = 0; byte_cursor < NEWFS_BLKS_SZ(newfs_super.map_data_blks); 

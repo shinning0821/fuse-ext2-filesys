@@ -27,7 +27,7 @@ typedef enum newfs_file_type {
 #define NEWFS_INODE_BLKS          512
 #define NEWFS_DATA_BLKS           2048
 #define NEWFS_MAP_INODE_BLKS      1
-#define NEWFS_MAP_DATA_BLKS       2
+#define NEWFS_MAP_DATA_BLKS       1
 
 
 #define NEWFS_ERROR_NONE          0
